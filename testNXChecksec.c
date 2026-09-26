@@ -18,10 +18,7 @@ int checkStack(){
   };
 
   unsigned char stack_code_location[sizeof(stack_code)];
-  
   memcpy(stack_code_location, stack_code, sizeof(stack_code));
-
-
   int (*run_stack_code)(void) = (int (*)(void))stack_code;
 
   return run_stack_code();
@@ -30,7 +27,6 @@ int checkStack(){
 int main(){
   signal(SIGSEGV, handler);
   signal(SIGILL, handler);
-
   
   if (sigsetjmp(env, 1) == 0){
     if (checkStack() == 50){
