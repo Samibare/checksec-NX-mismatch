@@ -14,10 +14,11 @@ kernel-executable stack as "NX enabled" (false assurance).
 git clone https://github.com/Samibare/checksec-NX-mismatch.git
 cd checksec-NX-mismatch
 docker build -t checksec-nx .
-docker run --rm checksec-nx ./run.sh
+docker run --rm checksec-nx ./runByBuild.sh ./runByTest.sh
 ```
-`run.sh` runs all four checksec builds against the crafted test cases and prints
-the result matrix. Expected output: the divergence table below.
+`runByBuild.sh` runs all four checksec builds against the crafted test cases by build and prints
+the result. `runByTest.sh` runs all four checksec builds against the crafted test cases by test file and prints
+the result. Expected output: the same result as the divergence table below.
 
 ## Result
 
