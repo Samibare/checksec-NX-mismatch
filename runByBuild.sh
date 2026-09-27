@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 
 echo "Kernel run time behavior"
 /nx-mismatch/bins/RW-RWE.out
