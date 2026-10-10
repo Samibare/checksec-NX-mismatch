@@ -30,10 +30,11 @@ the result. Expected output: the same result as the divergence table below.
 
 ## Repository contents
 
-- `src/` — C harness (`testNXChecksec.c`) that reports whether the stack is executable at runtime
-- `bins/` — crafted test binaries (two `PT_GNU_STACK` headers; source in `src/`)
-- `Dockerfile` — pins the environment and fetches the four checksec builds at their commits
-- `run.sh` — runs all builds against all cases, prints the matrix
+- `src/` - C harness (`testNXChecksec.c`) that reports whether the stack is executable at runtime
+- `bins/` - crafted test binaries (two `PT_GNU_STACK` headers; source in `src/`)
+- `Dockerfile` - pins the environment and fetches the four checksec builds at their commits
+- `runByBuild.sh` - runs all builds against all cases
+- `runByTest.sh` - runs all test cases against builds
 
 ---
 
