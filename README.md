@@ -94,12 +94,12 @@ Definitions:
 
 The current version of main for Go conducts the NX check through the first-match algorithm and reports based off of `PF_X` value of the first `PT_GNU_STACK`. This results in accurate reporting on ELF file that has single `PT_GNU_STACK` header, but incorrect reporting when there are multiple. 
 
-| Checksec GO (main, 269453e): First match |  |  |  |
-| :---- | :---- | :---- | :---- |
-| GNU\_STACK flags (1st \- 2nd) | RW-RWE | RWE-RW | RW |
-| Checksec GO | NX enabled | NX disabled | NX enabled |
-| Kernel/Run time | Stack executable | Stack non-executable | Stack non-executable |
-| Mismatch | False assurance | False alarm | No mismatch |
+| Checksec GO (main, 269453e): First match |  |  |  |  |  |
+| :---- | :---- | :---- | :---- | :---- | :---- |
+| GNU\_STACK flags (1st \- 2nd) | RW-RWE | RWE-RW | __E | \_W\_ & R\_\_ | RW |
+| Checksec GO | NX enabled | NX disabled | NX disabled | NX enabled | NX enabled |
+| Kernel/Run time | Stack executable | Stack non-executable | Stack executable | Stack non-executable | Stack non-executable |
+| Mismatch | False assurance | False alarm | No mismatch | No mismatch | No mismatch |
 
 checksec/pkg/checksec/[nx.go](http://nx.go), function NX, PT\_GNU\_STACK check, at commit 269453e and introduced in commit c14b768.  
 [https://github.com/slimm609/checksec/blob/269453e091f196741d7c521da09a1e779870fee4/pkg/checksec/nx.go\#L22-L36](https://github.com/slimm609/checksec/blob/269453e091f196741d7c521da09a1e779870fee4/pkg/checksec/nx.go#L22-L36)
@@ -112,12 +112,12 @@ go install github.com/slimm609/checksec@latest
 
 At the time of writing this, 9/15/2026, the build provided by checksec@latest is commit 71012bf5cee9. This build conducts the NX check with any non-X algorithm. The presence of a single `PT_GNU_STACK` without the execute bit set on the flag will cause the algorithm to return that NX is enabled, causing a bias towards flagging the binary as NX-enabled. It therefore never produces a false alarm, but it still produces false assurance. As a side note, the algorithm correctly outputs the state of NX when their is one `PT_GNU_STACK`, while reporting may be inaccurate when there are multiple.
 
-| Checksec go (Commit @71012bf): Any non-X |  |  |  |
-| :---- | :---- | :---- | :---- |
-| GNU\_STACK flags (1st \- 2nd) | RW-RWE | RWE-RW | RW |
-| Checksec Go commit 71012bf5cee9   | NX enabled | NX enabled | NX enabled |
-| Kernel/Run time | Stack executable | Stack non-executable | Stack non-executable |
-| Mismatch | False assurance | No mismatch | No mismatch |
+| Checksec go (Commit @71012bf): Any non-X |  |  |  |  |  |
+| :---- | :---- | :---- | :---- | :---- | :---- |
+| GNU\_STACK flags (1st \- 2nd) | RW-RWE | RWE-RW | __E | \_W\_ & R\_\_ | RW |
+| Checksec Go commit 71012bf5cee9   | NX enabled | NX enabled | NX disabled | NX enabled | NX enabled |
+| Kernel/Run time | Stack executable | Stack non-executable | Stack executable | Stack non-executable | Stack non-executable |
+| Mismatch | False assurance | No mismatch | No mismatch | No mismatch | No mismatch |
 
 checksec/pkg/checksec/nx.go, function NX(), PT\_GNU\_STACK check, at commit 71012bf  
 [https://github.com/slimm609/checksec/blob/71012bf5cee95e46c120cbfa9afa0520ac2c5573/pkg/checksec/nx.go\#L19-L25](https://github.com/slimm609/checksec/blob/71012bf5cee95e46c120cbfa9afa0520ac2c5573/pkg/checksec/nx.go#L19-L25)
@@ -133,12 +133,12 @@ conducts the NX check by grepping all PT\_GNU\_STACK program headers, then grepp
 
 However, as the algorithm only checks if there are any RWE flag values, if the flag values are anything other than RWE, it will report that NX is enabled. With this, we can cause a false assurance with a single PT_GNU_STACK header through setting the flag value as __E.
 
-| Checksec bash (2.6.0, @2753ebb): Any RWE |  |  |  |  |
-| :---- | :---- | :---- | :---- | :---- |
-| GNU\_STACK flags (1st \- 2nd) | RW-RWE | RWE-RW | RW  | __E  |
-| Checksec bash 2.6.0 | NX disabled | NX disabled | NX enabled | NX enabled |
-| Kernel/Run time | Stack executable | Stack non-executable | Stack non-executable | Stack executable |
-| Mismatch | No mismatch | False alarm | No mismatch | False assurance |
+| Checksec bash (2.6.0, @2753ebb): Any RWE |  |  |  |  |  |
+| :---- | :---- | :---- | :---- | :---- | :---- |
+| GNU\_STACK flags (1st \- 2nd) | RW-RWE | RWE-RW | __E | \_W\_ & R\_\_ | RW |
+| Checksec bash 2.6.0 | NX disabled | NX disabled | NX enabled | NX enabled | NX enabled |
+| Kernel/Run time | Stack executable | Stack non-executable | Stack executable | Stack non-executable | Stack non-executable |
+| Mismatch | No mismatch | False alarm | False assurance | No mismatch | No mismatch |
 
 ‘apt policy checksec’ produces  
 checksec:  
@@ -159,12 +159,12 @@ The main version of bash determines the posture of NX by analyzing the metadata 
 
 To display the mismatch, the test binary has been modified. The RW-RWE binary will have both PT\_GNU\_STACK headers that have zeroed-out metadata/fields. The RWE-RW binary will have the field of PT\_GNU\_STACK with flag value of RW as 0x1.
 
-| Checksec bash (main, 269453e): Checks the metadata of the first PT\_GNU\_STACK with RW flag value |  |  |  |  |
-| :---- | :---- | :---- | :---- | :---- |
-| GNU\_STACK flags (1st \- 2nd) | RW-RWE (Both fields zeroed out) | RWE-RW (RW offset field \= 0x1) | RW | \_W\_ & R\_\_ |
-| Checksec bash main | NX enabled | NX disabled | NX enabled | NX disabled |
-| Kernel/Run time | Stack executable | Stack non-executable | Stack non-executable | Stack non-executable |
-| Mismatch | False assurance | False alarm | No mismatch | False alarm |
+| Checksec bash (main, 269453e): Checks the metadata of the first PT\_GNU\_STACK with RW flag value |  |  |  |  |  |
+| :---- | :---- | :---- | :---- | :---- | :---- |
+| GNU\_STACK flags (1st \- 2nd) | RW-RWE (Both fields zeroed out) | RWE-RW (RW offset field \= 0x1) | __E | \_W\_ & R\_\_ | RW |
+| Checksec bash main | NX enabled | NX disabled | NX disabled | NX disabled | NX enabled |
+| Kernel/Run time | Stack executable | Stack non-executable | Stack executable | Stack non-executable | Stack non-executable |
+| Mismatch | False assurance | False alarm | No mismatch | False alarm | No mismatch |
 
 checksec/checksec.bash, function filecheck(), GNU\_STACK check, at commit 269453e [https://github.com/slimm609/checksec/blob/269453e091f196741d7c521da09a1e779870fee4/checksec.bash\#L730-L740](https://github.com/slimm609/checksec/blob/269453e091f196741d7c521da09a1e779870fee4/checksec.bash#L730-L740)
 
