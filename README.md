@@ -182,7 +182,7 @@ As shown at the beginning, the following is a compacted summary of all checksec 
 | Linux kernel | last-wins | executable | non-exec | executable | non-exec | non-exec |
 
 **Synthesis:**  
-Of the four checksec builds, three of them produced false assurance on `RW-RWE` (Go main, Bash main, and Go latest). The bash build 2.6.0, installable through the current apt, produces false assurance when the effective `PT_GNU_STACK` has executable bit set but is not the literal `RWE` (as described above), and no `PT_GNU_STACK` has the flag value of `RWE` if their are multiple `PT_GNU_STACK` headers. The false assurance also occurs even with a single header. None of the builds replicate the kernel's last-wins behavior. 
+Of the four checksec builds, three of them produced false assurance on `RW-RWE` (Go main, Bash main, and Go latest). The bash build 2.6.0, installable through the current apt, produces false assurance when the effective `PT_GNU_STACK` has executable bit set but is not the literal `RWE` (as described above), and no `PT_GNU_STACK` has the flag value of `RWE` if there are multiple `PT_GNU_STACK` headers. The false assurance also occurs even with a single header. None of the builds replicate the kernel's last-wins behavior. 
 
 With all 4 builds having different algorithm from one another, and none replicating the kernel's  behavior of using the last `PT_GNU_STACK` headers `PF_X` value, there is a clear disconnect between checksec’s NX logic and the kernel’s actual ELF loading behavior. 
 
