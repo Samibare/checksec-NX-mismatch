@@ -7,6 +7,10 @@
 **Environment:** Ubuntu 26.04 LTS, kernel 7.0.0-31-generic
 
 ## Reproduce
+> [!NOTE]
+> Prerequisites: Docker. On Linux, run the docker commands with sudo, or add yourself to the docker group (sudo usermod -aG docker $USER, then log out and back in) to run them without it.
+> 
+> Results use checksec builds pinned by the Docker image (Ubuntu 26.04 userspace). The runtime stack-executability check uses the host kernel, not the container's. The container share the host kernel. THe relevant behavior (last PT_GNU_STACK wins) is unchanged across v5.0-v7.0, so any host in that range reproduces the same runtime results.
 ```
 git clone https://github.com/Samibare/checksec-NX-mismatch.git
 cd checksec-NX-mismatch
@@ -62,7 +66,7 @@ Does checksec’s NX detection reproduce the Linux kernel’s behavior for ELF b
 **Method:**  
 The program checks whether the stack is executable by placing an instruction on the stack and calling the stack. This “function” on the stack will return the integer 50 when called. The program then calls the loaded function on the stack and checks whether it returned 50\. If the function returns 50, then it prints “Stack is executable”. However, when the process crashes, the program catches it and prints “Stack is not executable”
 
-This C program is then compiled into a binary. I then modified the binary through hexedit and replaced a `PT_NOTE` header with a `PT_GNU_STACK` header, resulting in two `PT_GNU_STACK` headers. From here, I created 2 versions of multi header ELF binary's. RW-RWE will have the first `PT_GNU_STACK` flag set to 0x6 (`RW_`) and the second flag to 0x7 (`RWE`). RWE-RW will have the first flag set to 0x7 (`RWE`) and the second to 0x6 (`RW_`). I also made a single header ELF binary with non-standard value. \_\_E will have a single `PT_GNU_STACK` where the value of the flag is 0x1 (`__E`). Similarly, I also made \_W\_ and R\_\_ test binary as well. Additionally, I made a ELF binary that has the default configuration for stack mitigation. RW will be the unmodified version, with one `PT_GNU_STACK` and the flag set to 0x6 (The default GCC compiling behavior). All binaries’ `PT_GNU_STACK` will have the fields zeroed out.
+This C program is then compiled into a binary. I then modified the binary through hexedit and replaced a `PT_NOTE` header with a `PT_GNU_STACK` header, resulting in two `PT_GNU_STACK` headers. From here, I created 2 versions of multi header ELF binaries. RW-RWE will have the first `PT_GNU_STACK` flag set to 0x6 (`RW_`) and the second flag to 0x7 (`RWE`). RWE-RW will have the first flag set to 0x7 (`RWE`) and the second to 0x6 (`RW_`). I also made a single header ELF binary with non-standard value. \_\_E will have a single `PT_GNU_STACK` where the value of the flag is 0x1 (`__E`). Similarly, I also made \_W\_ and R\_\_ test binary as well. Additionally, I made a ELF binary that has the default configuration for stack mitigation. RW will be the unmodified version, with one `PT_GNU_STACK` and the flag set to 0x6 (The default GCC compiling behavior). All binaries’ `PT_GNU_STACK` will have the fields zeroed out.
 
 **Kernel behavior:**  
 The kernel’s behavior will be the reference that checksec’s different builds will be compared to.
@@ -108,7 +112,7 @@ The latest checksec build is available through
 
 go install github.com/slimm609/checksec@latest
 
-At the time of writing this, 9/15/2026, the build provided by checksec@latest is commit 71012bf5cee9. This build conducts the NX check with any non-X algorithm. The presence of a single `PT_GNU_STACK` without the execute bit set on the flag will cause the algorithm to return that NX is enabled, causing a bias towards flagging the binary as NX-enabled. It therefore never produces a false alarm, but it still produces false assurance. As a side note, the algorithm correctly outputs the state of NX when their is one `PT_GNU_STACK`, while reporting may be inaccurate when there are multiple.
+At the time of writing this, 9/15/2026, the build provided by checksec@latest is commit 71012bf5cee9. This build conducts the NX check with any non-X algorithm. The presence of a single `PT_GNU_STACK` without the execute bit set on the flag will cause the algorithm to return that NX is enabled, causing a bias towards flagging the binary as NX-enabled. It therefore never produces a false alarm, but it still produces false assurance. As a side note, the algorithm correctly outputs the state of NX when there is one `PT_GNU_STACK`, while reporting may be inaccurate when there are multiple.
 
 | Checksec go (Commit @71012bf): Any non-X |  |  |  |  |  |
 | :---- | :---- | :---- | :---- | :---- | :---- |
@@ -155,7 +159,7 @@ proccheck():	[https://github.com/slimm609/checksec/blob/2753ebb89fcdc96433ae8a4c
 
 The main version of bash determines the posture of NX by analyzing the metadata of the first `PT_GNU_STACK` that has an RW flag value. If the metadata is all zeros, it reports that NX is enabled; otherwise, NX is disabled. Additionally, if  `PT_GNU_STACK` that has RW flag value is not present, it defaults to reporting as NX is disabled. This causes false alarm through `_W_` or `R__` flag value.
 
-Due to the algorithm relying on the value of fields, to display the mismatch `RWE-RW.out` has been modified to make `bash-RWE-RW.out`. Both `PT_GNU_STACK` headers in `RWE-RW.out` have zeroed-out metadata/fields; However, `bash-RWE-RW.out` test binary has a offset value of 0x1 for the `PT_GNU_STACK` header with flag value of RW.
+Due to the algorithm relying on the value of fields, to display the mismatch `RWE-RW.out` has been modified to make `bash-RWE-RW.out`. Both `PT_GNU_STACK` headers in `RWE-RW.out` have zeroed-out metadata/fields; However, `bash-RWE-RW.out` test binary has an offset value of 0x1 for the `PT_GNU_STACK` header with flag value of RW.
 
 | Checksec bash (main, 269453e): Checks the metadata of the first PT\_GNU\_STACK with RW flag value |  |  |  |  |  |
 | :---- | :---- | :---- | :---- | :---- | :---- |
