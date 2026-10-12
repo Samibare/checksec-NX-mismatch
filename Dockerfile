@@ -27,5 +27,11 @@ COPY . /nx-mismatch
 RUN chmod +x ./runByBuild.sh \
     && chmod +x ./runByTest.sh
 
-
-
+RUN chmod +x ./bins/E.out \
+    && chmod +x ./bins/E.out \
+    && chmod +x ./bins/R.out \
+    && chmod +x ./bins/RW-RWE.out \
+    && chmod +x ./bins/RW.out \
+    && chmod +x ./bins/RWE-RW.out \
+    && chmod +x ./bins/W.out \
+    && chmod +x ./bins/bash-RWE-RW.out
