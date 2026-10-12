@@ -168,6 +168,8 @@ To display the mismatch, the test binary has been modified. The RW-RWE binary wi
 
 checksec/checksec.bash, function filecheck(), GNU\_STACK check, at commit 269453e [https://github.com/slimm609/checksec/blob/269453e091f196741d7c521da09a1e779870fee4/checksec.bash\#L730-L740](https://github.com/slimm609/checksec/blob/269453e091f196741d7c521da09a1e779870fee4/checksec.bash#L730-L740)
 
+---
+
 As shown at the beginning, the following is a compacted summary of all checksec builds tested and their results
 
 
