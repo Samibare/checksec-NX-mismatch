@@ -11,12 +11,10 @@
 git clone https://github.com/Samibare/checksec-NX-mismatch.git
 cd checksec-NX-mismatch
 docker build -t checksec-nx .
-docker run --rm checksec-nx ./runByBuild.sh 
-docker run --rm checksec-nx ./runByTest.sh 
+docker run --rm checksec-nx ./runFormatted.sh 
+docker run --rm checksec-nx ./runRaw.sh 
 ```
-`runByBuild.sh` runs all four checksec builds against the crafted test cases by build and prints
-the result. `runByTest.sh` runs all four checksec builds against the crafted test cases by test file and prints
-the result. Expected output: the same result as the divergence table below.
+runFormatted.sh runs all four checksec builds against every test case and prints a compact summary of each build's NX verdict next to the kernel's runtime behavior. runRaw.sh runs the same but prints each tool's full, unmodified output so the results can be independently verified. Expected output: the same result as the divergence table below.
 
 ## Result
 
@@ -31,10 +29,10 @@ the result. Expected output: the same result as the divergence table below.
 ## Repository contents
 
 - `src/` - C harness (`testNXChecksec.c`) that reports whether the stack is executable at runtime
-- `bins/` - crafted test binaries (two `PT_GNU_STACK` headers; source in `src/`)
+- `bins/` - crafted test binaries (source in `src/`)
 - `Dockerfile` - pins the environment and fetches the four checksec builds at their commits
-- `runByBuild.sh` - runs all builds against all cases
-- `runByTest.sh` - runs all test cases against builds
+- `runRaw.sh` - runs all four builds against all cases, prints unmodified output for verification
+- `runFormatted.sh` - runs all four builds against all cases, prints a compact NX verdict summary
 
 ---
 
