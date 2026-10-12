@@ -157,11 +157,11 @@ proccheck():	[https://github.com/slimm609/checksec/blob/2753ebb89fcdc96433ae8a4c
 
 ---
 
-The main version of bash determines the posture of NX by analyzing the metadata of the first `PT_GNU_STACK` that has an RW flag value. If the metadata is all zeros, it reports that NX is enabled; otherwise, NX is disabled. Additionally, if  `PT_GNU_STACK` that has RW flag value is not present, it defaults to reporting as NX is disabled. This causes false alarm through `_W_` or `R__` flag value.
+The main version of bash determines the posture of NX by analyzing the metadata of all the  `PT_GNU_STACK` that has an RW flag value. If the metadata is all zeros, it reports that NX is enabled; otherwise, NX is disabled. Additionally, if  `PT_GNU_STACK` that has RW flag value is not present, it defaults to reporting as NX is disabled. This causes false alarm through `_W_` or `R__` flag value.
 
 Due to the algorithm relying on the value of fields, to display the mismatch `RWE-RW.out` has been modified to make `bash-RWE-RW.out`. Both `PT_GNU_STACK` headers in `RWE-RW.out` have zeroed-out metadata/fields; However, `bash-RWE-RW.out` test binary has an offset value of 0x1 for the `PT_GNU_STACK` header with flag value of RW.
 
-| Checksec bash (main, 269453e): Checks the metadata of the first PT\_GNU\_STACK with RW flag value |  |  |  |  |  |
+| Checksec bash (main, 269453e): Checks the metadata of all the PT\_GNU\_STACK with RW flag value |  |  |  |  |  |
 | :---- | :---- | :---- | :---- | :---- | :---- |
 | GNU\_STACK flags (1st \- 2nd) | RW-RWE (Both fields zeroed out) | RWE-RW (RW offset field \= 0x1) | __E | \_W\_ & R\_\_ | RW |
 | Checksec bash main | NX enabled | NX disabled | NX disabled | NX disabled | NX enabled |
@@ -180,7 +180,7 @@ As shown at the beginning, the following is a compacted summary of all checksec 
 | Go main ([269453e](https://github.com/slimm609/checksec/blob/269453e091f196741d7c521da09a1e779870fee4/pkg/checksec/nx.go#L22-L36)) | first match | False assurance | False alarm | OK | OK | OK |
 | Go latest ([71012bf](https://github.com/slimm609/checksec/blob/71012bf5cee95e46c120cbfa9afa0520ac2c5573/pkg/checksec/nx.go#L19-L25)) | any non-X | False assurance | OK | OK | OK | OK |
 | Bash 2.6.0 ([2753ebb](https://github.com/slimm609/checksec/blob/2753ebb89fcdc96433ae8a4c4e5a49214a845be2/checksec#L720C2-L729C5)) | any RWE | OK | False alarm | False assurance | OK | OK |
-| Bash main ([269453e](https://github.com/slimm609/checksec/blob/269453e091f196741d7c521da09a1e779870fee4/checksec.bash#L730-L740)) | metadata of first RW | False assurance | False alarm | OK | False alarm | OK |
+| Bash main ([269453e](https://github.com/slimm609/checksec/blob/269453e091f196741d7c521da09a1e779870fee4/checksec.bash#L730-L740)) | metadata of all RW | False assurance | False alarm | OK | False alarm | OK |
 | Linux kernel | last-wins | executable | non-exec | executable | non-exec | non-exec |
 
 **Synthesis:**  
