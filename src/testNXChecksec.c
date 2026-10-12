@@ -11,9 +11,9 @@ static void handler(int sig){
 }
 
 int checkStack(){
-  //Move 0xbd to eax if the stack is excutable
+  //Move 0x32 to eax if the stack is excutable
   unsigned char stack_code[] = {
-    0xb8, 0x32, 0x00, 0x00, 0x00, //mov eax, 0xbd
+    0xb8, 0x32, 0x00, 0x00, 0x00, //mov eax, 0x32
     0xc3                          //ret
   };
 
