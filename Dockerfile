@@ -24,5 +24,8 @@ RUN git clone https://github.com/slimm609/checksec.git checksec-apt-bash-2753ebb
 
 COPY . /nx-mismatch
 
+RUN chmod +x ./runByBuilds.sh \
+    && chmod +x ./runByTest.sh
+
 
 
