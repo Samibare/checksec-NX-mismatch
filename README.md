@@ -129,9 +129,9 @@ The checksec bash build v2.6.0 is installable through
 sudo apt update   
 sudo apt install checksec
 
-conducts the NX check by grepping all PT\_GNU\_STACK program headers, then grepping for any RWE flag. If there is any RWE flag, it will return NX disabled; otherwise, it will return NX enabled.
+conducts the NX check by grepping all `PT_GNU_STACK` program headers, then grepping for any `RWE` flag. If there is any `RWE` flag, it will return NX disabled; otherwise, it will return NX enabled.
 
-However, as the algorithm only checks if there are any RWE flag values, if the flag values are anything other than RWE, it will report that NX is enabled. With this, we can cause a false assurance with a single PT_GNU_STACK header through setting the flag value as __E.
+However, as the algorithm only checks if there are any `RWE` flag values, if the flag values are anything other than `RWE`, it will report that NX is enabled. With this, we can cause a false assurance with a single `PT_GNU_STACK` header by setting the flag to any executable but not `RWE` value (`__E`, `_WE`, or `R_E`). I verified this with `__E`; the other two follow from the same mechanism, since the check matches only the literal string `RWE`.
 
 | Checksec bash (2.6.0, @2753ebb): Any RWE |  |  |  |  |  |
 | :---- | :---- | :---- | :---- | :---- | :---- |
@@ -149,7 +149,7 @@ checksec:
         500 http://us.archive.ubuntu.com/ubuntu resolute/universe amd64 Packages  
         100 /var/lib/dpkg/status
 
-Any RWE logic in filecheck() and proccheck(). Ubuntu 2.6.0-2build1 (26.04 resolute/universe) ships upstream checksec 2.6.0 unpatched. Verified through apt-get source not containing debian/patches, indicating an empty patches series. The logic is identical to upstream tag 2.6.0.  
+Any `RWE` logic in filecheck() and proccheck(). Ubuntu 2.6.0-2build1 (26.04 resolute/universe) ships upstream checksec 2.6.0 unpatched. Verified through apt-get source not containing debian/patches, indicating an empty patches series. The logic is identical to upstream tag 2.6.0.  
 filecheck():	[https://github.com/slimm609/checksec/blob/2753ebb89fcdc96433ae8a4c4e5a49214a845be2/checksec\#L720C2-L729C5](https://github.com/slimm609/checksec/blob/2753ebb89fcdc96433ae8a4c4e5a49214a845be2/checksec#L720C2-L729C5)  
 proccheck():	[https://github.com/slimm609/checksec/blob/2753ebb89fcdc96433ae8a4c4e5a49214a845be2/checksec\#L1553-L1577](https://github.com/slimm609/checksec/blob/2753ebb89fcdc96433ae8a4c4e5a49214a845be2/checksec#L1553-L1577)
 
@@ -182,7 +182,7 @@ As shown at the beginning, the following is a compacted summary of all checksec 
 | Linux kernel | last-wins | executable | non-exec | executable | non-exec | non-exec |
 
 **Synthesis:**  
-Of the four checksec builds, three of them produced false assurance on `RW-RWE` (Go main, Bash main, and Go latest). The bash build 2.6.0, installable through the current apt, produces false assurance when the effective `PT_GNU_STACK` has executable bit set, but the flag is not to be the literal `RWE` (either `__E` or `_WE`), and there must not be any `PT_GNU_STACK` that has the flag value of `RWE` if their are multiple `PT_GNU_STACK` headers. This occurs even with a single header. None of the builds replicate the kernel's last-wins behavior. 
+Of the four checksec builds, three of them produced false assurance on `RW-RWE` (Go main, Bash main, and Go latest). The bash build 2.6.0, installable through the current apt, produces false assurance when the effective `PT_GNU_STACK` has executable bit set but is not the literal `RWE` (as described above), and no `PT_GNU_STACK` has the flag value of `RWE` if their are multiple `PT_GNU_STACK` headers. The false assurance also occurs even with a single header. None of the builds replicate the kernel's last-wins behavior. 
 
 With all 4 builds having different algorithm from one another, and none replicating the kernel's  behavior of using the last `PT_GNU_STACK` headers `PF_X` value, there is a clear disconnect between checksec’s NX logic and the kernel’s actual ELF loading behavior. 
 
