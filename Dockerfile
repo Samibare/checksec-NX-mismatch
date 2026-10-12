@@ -2,7 +2,7 @@ FROM ubuntu:26.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y binutils git bash gcc golang-go
+RUN apt-get update && apt-get install -y binutils git bash gcc golang-go file
 
 WORKDIR /nx-mismatch
 
