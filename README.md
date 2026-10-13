@@ -1,6 +1,6 @@
 # checksec NX / PT_GNU_STACK divergence
 
-**Finding:** On crafted ELF binaries, checksec's NX detection diverges from the Linux kernel. The kernel honors the **last** `PT_GNU_STACK`'s execute bit `PF_X`. Across multiple header and non standard flag cases, all four tested builds report a kernel executable stack as "NX enabled" (false assurance) in at least one of the cases.
+**Finding:** On crafted ELF binaries, checksec's NX detection diverges from the Linux kernel. The kernel honors the **last** `PT_GNU_STACK`'s execute bit `PF_X`. Across multiple header and non-standard flag cases, all four tested builds report a kernel executable stack as "NX enabled" (false assurance) in at least one of the cases.
 
 **Upstream issue:** https://github.com/slimm609/checksec/issues/357
 
@@ -10,7 +10,7 @@
 > [!NOTE]
 > Prerequisites: Docker. On Linux, run the docker commands with sudo, or add yourself to the docker group (sudo usermod -aG docker $USER, then log out and back in) to run them without it.
 > 
-> Results use checksec builds pinned by the Docker image (Ubuntu 26.04 userspace). The runtime stack-executability check uses the host kernel, not the container's. The container share the host kernel. THe relevant behavior (last PT_GNU_STACK wins) is unchanged across v5.0-v7.0, so any host in that range reproduces the same runtime results.
+> Results use checksec builds pinned by the Docker image (Ubuntu 26.04 userspace). The runtime stack-executability check uses the host kernel, not the container's. The container shares the host kernel. The relevant behavior (last PT_GNU_STACK wins) is unchanged across v5.0-v7.0, so any host in that range reproduces the same runtime results.
 ```
 git clone https://github.com/Samibare/checksec-NX-mismatch.git
 cd checksec-NX-mismatch
@@ -27,7 +27,7 @@ runFormatted.sh runs all four checksec builds against every test case and prints
 | Go main (269453e) | first match | False assurance | False alarm | OK | OK | OK |
 | Go latest (71012bf) | any non-X | False assurance | OK | OK | OK | OK |
 | Bash 2.6.0 (2753ebb) | any RWE | OK | False alarm | False assurance | OK | OK |
-| Bash main (269453e) | metadata of first RW | False assurance | False alarm | OK | False alarm | OK |
+| Bash main (269453e) | metadata of all RW | False assurance | False alarm | OK | False alarm | OK |
 | Linux kernel | last-wins | executable | non-exec | executable | non-exec | non-exec |
 
 ## Repository contents
@@ -43,12 +43,12 @@ runFormatted.sh runs all four checksec builds against every test case and prints
 # Write-up
 
 **Abstract:**
-Checksec reports the security posture of an ELF binary by inspecting the ELF metadata corresponding to mitigations enforced by the kernel or dynamic loader. Checksec also uses this reported mitigation posture to provide exploitability reasoning, including identifying attack techniques a binary’s mitigations fail to obstruct. Therefore, its correctness affects not only what a user reads but also what downstream reasoning consumes. This work examines the correctness of NX mitigation reporting by checksec compared to runtime behavior when there are multiple `PT_GNU_STACK` headers and non standard flag cases. Using a crafted ELF binary whose runtime stack executability serves as ground truth, four checksec builds were tested (Bash 2.6.0, Go @latest (commit 71012bf), Go main (commit 269453e), and Bash main (commit 269453e)). None reproduced the kernel’s last-wins rule. Each implemented a different algorithm (first match, any non-executable, any RWE, and metadata of the first RW), and all builds produced at least one false assurance across crafted test cases. These divergences indicate that checksec’s NX check is not derived from the kernel’s loader semantics. Notably, the four builds implement four different algorithms; the check has been reimplemented and rederived four different times rather than converging on the loader’s actual behavior.
+Checksec reports the security posture of an ELF binary by inspecting the ELF metadata corresponding to mitigations enforced by the kernel or dynamic loader. Checksec also uses this reported mitigation posture to provide exploitability reasoning, including identifying attack techniques a binary’s mitigations fail to obstruct. Therefore, its correctness affects not only what a user reads but also what downstream reasoning consumes. This work examines the correctness of NX mitigation reporting by checksec compared to runtime behavior when there are multiple `PT_GNU_STACK` headers and non-standard flag cases. Using a crafted ELF binary whose runtime stack executability serves as ground truth, four checksec builds were tested (Bash 2.6.0, Go @latest (commit 71012bf), Go main (commit 269453e), and Bash main (commit 269453e)). None reproduced the kernel’s last-wins rule. Each implemented a different algorithm (first match, any non-executable, any RWE, and metadata of the all RW), and all builds produced at least one false assurance across crafted test cases. These divergences indicate that checksec’s NX check is not derived from the kernel’s loader semantics. Notably, the four builds implement four different algorithms; the check has been reimplemented and rederived four different times rather than converging on the loader’s actual behavior.
 
 **Background:**  
-So what is PT\_GNU\_STACK? To start, an ELF file has multiple program headers (PTs) that the kernel processes and interprets to determine certain program behavior. PT\_GNU\_STACK is one of the possible PTs that an ELF file has, and it determines whether the stack is executable or not. The mitigation of making the stack non-executable is referred to as NX (**N**on-e**X**ecutable). Ultimately, PT\_GNU\_STACK determines the posture of NX mitigation of a file.
+So what is `PT_GNU_STACK`? To start, an ELF file has multiple program headers (PTs) that the kernel processes and interprets to determine certain program behavior. `PT_GNU_STACK` is one of the possible PTs that an ELF file has, and it determines whether the stack is executable or not. The mitigation of making the stack non-executable is referred to as NX (**N**on-e**X**ecutable). Ultimately, `PT_GNU_STACK` determines the posture of NX mitigation of a file.
 
-How does the kernel process the PT\_GNU\_STACK header? More importantly, how does it determine the state of NX when there are multiple PT\_GNU\_STACK headers? The kernel iterates through all PT\_GNU\_STACK headers and updates the state of NX. This results in the last PT\_GNU\_STACK winning, utilizing the value of the flag it holds.
+How does the kernel process the `PT_GNU_STACK` header? More importantly, how does it determine the state of NX when there are multiple `PT_GNU_STACK` headers? The kernel iterates through all `PT_GNU_STACK` headers and updates the state of NX. This results in the last `PT_GNU_STACK` winning, utilizing the value of the flag it holds.
 
 What does checksec report? Checksec reports the security posture of a program; one of them is NX. If checksec derives that NX is present on a binary, it will report “NX enabled” and “NX disabled” otherwise.
 
@@ -61,20 +61,22 @@ Source: [https://slimm609.github.io/checksec/](https://slimm609.github.io/checks
 “Beyond reporting the raw mitigation posture, checksec can reason about which attack techniques that posture fails to obstruct ([exploitability reasoning](https://slimm609.github.io/checksec/checks/exploitability/), \--exploit) and emit a self-grounding report you can paste straight into an LLM ([\-o llm](https://slimm609.github.io/checksec/llm/)).”
 
 **Research Question:**  
-Does checksec’s NX detection reproduce the Linux kernel’s behavior for ELF binaries with non standard `PT_GNU_STACK` configurations: specifically multiple headers and non standard flag values?
+Does checksec’s NX detection reproduce the Linux kernel’s behavior for ELF binaries with non-standard `PT_GNU_STACK` configurations: specifically multiple headers and non-standard flag values?
 
 **Method:**  
 The program checks whether the stack is executable by placing an instruction on the stack and calling the stack. This “function” on the stack will return the integer 50 when called. The program then calls the loaded function on the stack and checks whether it returned 50\. If the function returns 50, then it prints “Stack is executable”. However, when the process crashes, the program catches it and prints “Stack is not executable”
 
-This C program is then compiled into a binary. I then modified the binary through hexedit and replaced a `PT_NOTE` header with a `PT_GNU_STACK` header, resulting in two `PT_GNU_STACK` headers. From here, I created 2 versions of multi header ELF binaries. RW-RWE will have the first `PT_GNU_STACK` flag set to 0x6 (`RW_`) and the second flag to 0x7 (`RWE`). RWE-RW will have the first flag set to 0x7 (`RWE`) and the second to 0x6 (`RW_`). I also made a single header ELF binary with non-standard value. \_\_E will have a single `PT_GNU_STACK` where the value of the flag is 0x1 (`__E`). Similarly, I also made \_W\_ and R\_\_ test binary as well. Additionally, I made a ELF binary that has the default configuration for stack mitigation. RW will be the unmodified version, with one `PT_GNU_STACK` and the flag set to 0x6 (The default GCC compiling behavior). All binaries’ `PT_GNU_STACK` will have the fields zeroed out.
+This C program is then compiled into a binary. I then modified the binary through hexedit and replaced a `PT_NOTE` header with a `PT_GNU_STACK` header, resulting in two `PT_GNU_STACK` headers. From here, I created 2 versions of multi-header ELF binaries. RW-RWE will have the first `PT_GNU_STACK` flag set to 0x6 (`RW_`) and the second flag to 0x7 (`RWE`). RWE-RW will have the first flag set to 0x7 (`RWE`) and the second to 0x6 (`RW_`). I also made a single header ELF binary with a non-standard value. \_\_E will have a single `PT_GNU_STACK` where the value of the flag is 0x1 (`__E`). Similarly, I also made \_W\_ and R\_\_ test binaries as well. Additionally, I made an ELF binary that has the default configuration for stack mitigation. RW will be the unmodified version, with one `PT_GNU_STACK` and the flag set to 0x6 (The default GCC compiling behavior). All binaries’ `PT_GNU_STACK` will have the fields zeroed out.
 
 **Kernel behavior:**  
 The kernel’s behavior will be the reference that checksec’s different builds will be compared to.
 
 The Kernel continuously iterates through the entire program header and updates the flag for every PT\_GNU\_STACK it encounters. This results in the last `PT_GNU_STACK`’s flag being utilized.
 
-\$ uname \-r  
+```
+$ uname -r  
 7.0.0-31-generic
+```
 
 linux/fs/binfmt\_elf.c, function load\_elf\_binary, the PT\_GNU\_STACK case, at commit 028ef9c.  
 This is v7.0, matching the 7.0 kernel shipped in Ubuntu 26.04  
@@ -94,7 +96,7 @@ Definitions:
 
 ---
 
-The current version of main for Go conducts the NX check through the first-match algorithm and reports based off of `PF_X` value of the first `PT_GNU_STACK`. This results in accurate reporting on ELF file that has single `PT_GNU_STACK` header, but incorrect reporting when there are multiple. 
+The current version of main for Go conducts the NX check through the first-match algorithm and reports based on the `PF_X` value of the first `PT_GNU_STACK`. This results in accurate reporting on ELF file that has single `PT_GNU_STACK` header, but incorrect reporting when there are multiple. 
 
 | Checksec GO (main, 269453e): First match |  |  |  |  |  |
 | :---- | :---- | :---- | :---- | :---- | :---- |
@@ -128,8 +130,10 @@ checksec/pkg/checksec/nx.go, function NX(), PT\_GNU\_STACK check, at commit 7101
 
 The checksec bash build v2.6.0 is installable through 
 
+```
 sudo apt update   
 sudo apt install checksec
+```
 
 conducts the NX check by grepping all `PT_GNU_STACK` program headers, then grepping for any `RWE` flag. If there is any `RWE` flag, it will return NX disabled; otherwise, it will return NX enabled.
 
@@ -142,7 +146,7 @@ However, as the algorithm only checks if there are any `RWE` flag values, if the
 | Kernel/Run time | Stack executable | Stack non-executable | Stack executable | Stack non-executable | Stack non-executable |
 | Mismatch | No mismatch | False alarm | False assurance | No mismatch | No mismatch |
 
-‘apt policy checksec’ produces  
+`apt policy checksec` produces  
 checksec:  
   Installed: 2.6.0-2build1  
   Candidate: 2.6.0-2build1  
@@ -157,9 +161,9 @@ proccheck():	[https://github.com/slimm609/checksec/blob/2753ebb89fcdc96433ae8a4c
 
 ---
 
-The main version of bash determines the posture of NX by analyzing the metadata of all the  `PT_GNU_STACK` that has an RW flag value. If the metadata is all zeros, it reports that NX is enabled; otherwise, NX is disabled. Additionally, if  `PT_GNU_STACK` that has RW flag value is not present, it defaults to reporting as NX is disabled. This causes false alarm through `_W_` or `R__` flag value.
+The main version of bash determines the posture of NX by analyzing the metadata of all the  `PT_GNU_STACK` sections that have an RW flag value. If the metadata is all zeros, it reports that NX is enabled; otherwise, NX is disabled. Additionally, if a  `PT_GNU_STACK` entry with an RW flag value is not present, it defaults to reporting that NX is disabled. This causes false alarm through `_W_` or `R__` flag value.
 
-Due to the algorithm relying on the value of fields, to display the mismatch `RWE-RW.out` has been modified to make `bash-RWE-RW.out`. Both `PT_GNU_STACK` headers in `RWE-RW.out` have zeroed-out metadata/fields; However, `bash-RWE-RW.out` test binary has an offset value of 0x1 for the `PT_GNU_STACK` header with flag value of RW.
+Due to the algorithm relying on the value of fields, to display the mismatch, `RWE-RW.out` has been modified to make `bash-RWE-RW.out`. Both `PT_GNU_STACK` headers in `RWE-RW.out` have zeroed-out metadata/fields; However, the `bash-RWE-RW.out` test binary has an offset value of 0x1 for the `PT_GNU_STACK` header with flag value of RW.
 
 | Checksec bash (main, 269453e): Checks the metadata of all the PT\_GNU\_STACK with RW flag value |  |  |  |  |  |
 | :---- | :---- | :---- | :---- | :---- | :---- |
@@ -184,15 +188,15 @@ As shown at the beginning, the following is a compacted summary of all checksec 
 | Linux kernel | last-wins | executable | non-exec | executable | non-exec | non-exec |
 
 **Synthesis:**  
-Of the four checksec builds, three of them produced false assurance on `RW-RWE` (Go main, Bash main, and Go latest). The bash build 2.6.0, installable through the current apt, produces false assurance when the effective `PT_GNU_STACK` has executable bit set but is not the literal `RWE` (as described above), and no `PT_GNU_STACK` has the flag value of `RWE` if there are multiple `PT_GNU_STACK` headers. The false assurance also occurs even with a single header. None of the builds replicate the kernel's last-wins behavior. 
+Of the four checksec builds, three of them produced false assurance on `RW-RWE` (Go main, Bash main, and Go latest). The bash build 2.6.0, installable through the current apt, produces false assurance when the effective `PT_GNU_STACK` has the executable bit set but is not the literal `RWE` (as described above), and no `PT_GNU_STACK` has the flag value of `RWE` if there are multiple `PT_GNU_STACK` headers. The false assurance also occurs even with a single header. None of the builds replicate the kernel's last-wins behavior. 
 
-With all 4 builds having different algorithm from one another, and none replicating the kernel's  behavior of using the last `PT_GNU_STACK` headers `PF_X` value, there is a clear disconnect between checksec’s NX logic and the kernel’s actual ELF loading behavior. 
+With all 4 builds having different algorithms from one another, and none replicating the kernel's  behavior of using the last `PT_GNU_STACK` header's `PF_X` value, there is a clear disconnect between checksec’s NX logic and the kernel’s actual ELF loading behavior. 
 
 **Prior art review:**
 Issue \#132 \[NX stack checking is incomplete\]  
 Lack of checking the size of the stack segment. “A non-zero size indicates an executable stack”
 
-This is different from the issue I am flagging (Flaw in validation algorithm), as this points out a flaw in the lack of consideration for how the kernel handles PT\_GNU\_STACK.
+This is different from the issue I am flagging (Flaw in validation algorithm), as this points out a flaw in the lack of consideration for how the kernel handles `PT_GNU_STACK`.
 
 ---
 
@@ -201,12 +205,12 @@ Issue \#161 \[RELRO Checking is incorrect for crafted ELF file\]
 This highlights a mismatch in the checksec and runtime behavior for RELRO on a crafted ELF file. While in a different scope, this has a similar methodology to fool checksec by modifying an ELF file.
 
 Additionally, user disconnect3d also mentions that it is possible to fool the stack canary check through compiling 
-`
+```
 void lol__stack_chk_fail() {}  
 int main() {  
     lol__stack_chk_fail();  
 }
-`
+```
 While user Maryse47 questions whether checking a troll code is in the scope of checksec, the said troll code (Pointing to any ELF file intentionally crafted to deceive checksec) is extremely plausible to find in environments such as CTFs. A CTF player may rely on checksec to determine the security posture of a binary to narrow down the exploitation scope. Any false signal will result in a negative outcome where the player may spend unnecessary time, as they worked on the assumption that checksec was correct and overlooked any mitigation being turned off.
 
 However, user disconnect3d counters this by mentioning that “checksec is often used for random binaries and to make statements of platform security,” and that it's plausible to have a vulnerable binary slip in.
@@ -215,7 +219,7 @@ This issue resulted in the author accepting and resolving it in the main branch.
 
 **Root cause and the fix:**
 
-The cause of the mismatch between the runtime behavior and the checksec stems from the difference in the checking algorithm. The checksec evaluates the posture of NX through selecting `PT_GNU_STACK` by its own algorithm, instead of the last one the loader honors. 
+The cause of the mismatch between the runtime behavior and the checksec stems from the difference in the checking algorithm. The checksec evaluates the posture of NX by selecting `PT_GNU_STACK` by its own algorithm, instead of the last one the loader honors. 
 
 The underlying issue is that checksec re-derives the NX rule instead of mirroring load\_elf\_binary. To prevent any similar bugs in the future, it is suggested to mirror the kernel/loader’s behavior.
 
@@ -225,7 +229,7 @@ The false assurance defect exists in Go builds and the current bash build in mai
 Go main @269453e fix:  
 The fix for this is to remove the `break` inside the if statement. This allows the loop to retain the last GNU\_STACK flag rather than the first, matching the kernel's last-wins behavior.
 
-This allows the Go script to iterate through the entire `PT_GNU_STACK` header and continues with the last flag value, rather than using the first one it encounters. This stays consistent with kernel's `PT_GNU_STACK` semantics.
+This allows the Go script to iterate through the entire `PT_GNU_STACK` header and continue with the last flag value, rather than using the first one it encounters. This stays consistent with kernel's `PT_GNU_STACK` semantics.
 https://github.com/slimm609/checksec/blob/269453e091f196741d7c521da09a1e779870fee4/pkg/checksec/nx.go#L34
 
 Bash main @269453e fix:  
